@@ -111,20 +111,18 @@ class OllamaHandler(BaseMLEngine):
         if attribute == "features":
             return pd.DataFrame([[target_col, prompt_template]], columns=['target_column', 'mindsdb_prompt_template'])
 
-        # get model info
-        else:
-            model_info = requests.post(OllamaHandler.SERVE_URL + '/api/show', json={'name': model_name}).json()
-            return pd.DataFrame([[
-                model_name,
-                model_info['license'],
-                model_info['modelfile'],
-                model_info['parameters'],
-                model_info['template'],
-            ]],
-                columns=[
-                    'model_type',
-                    'license',
-                    'modelfile',
-                    'parameters',
-                    'ollama_base_template',
-                ])
+        model_info = requests.post(OllamaHandler.SERVE_URL + '/api/show', json={'name': model_name}).json()
+        return pd.DataFrame([[
+            model_name,
+            model_info['license'],
+            model_info['modelfile'],
+            model_info['parameters'],
+            model_info['template'],
+        ]],
+            columns=[
+                'model_type',
+                'license',
+                'modelfile',
+                'parameters',
+                'ollama_base_template',
+            ])

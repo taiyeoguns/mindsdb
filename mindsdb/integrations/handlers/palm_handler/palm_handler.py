@@ -166,15 +166,13 @@ class PalmHandler(BaseMLEngine):
                 "model": pred_args.get("model_name", "models/embedding-gecko-001")
             }
             model_name = "models/embedding-gecko-001"
-            if args_model.question_column:
-                prompts = list(df[args_model.question_column].apply(lambda x: str(x)))
-                empty_prompt_ids = np.where(
-                    df[[args_model.question_column]].isna().all(axis=1).values
-                )[0]
-            else:
+            if not args_model.question_column:
                 raise Exception("Embedding mode needs a question_column")
 
-        # Chat or normal completion mode
+            prompts = list(df[args_model.question_column].apply(lambda x: str(x)))
+            empty_prompt_ids = np.where(
+                df[[args_model.question_column]].isna().all(axis=1).values
+            )[0]
         else:
             if (
                 args_model.question_column
@@ -241,7 +239,7 @@ class PalmHandler(BaseMLEngine):
             elif args_model.prompt:
                 empty_prompt_ids = []
                 prompts = list(df[args_model.user_column])
-                if len(prompts) == 0:
+                if not prompts:
                     raise Exception("No prompts found")
             else:
                 empty_prompt_ids = np.where(
@@ -264,9 +262,7 @@ class PalmHandler(BaseMLEngine):
         for i in sorted(empty_prompt_ids):
             completion.insert(i, None)
 
-        pred_df = pd.DataFrame(completion, columns=[args_model.target])
-
-        return pred_df
+        return pd.DataFrame(completion, columns=[args_model.target])
 
     def _completion(self, model_name, prompts, api_key, api_args, args_model, df):
         """
@@ -329,7 +325,7 @@ class PalmHandler(BaseMLEngine):
         def _submit_embedding_completion(kwargs, prompts, api_args):
             def _tidy(comp):
                 tidy_comps = []
-                if not "embedding" in comp:
+                if "embedding" not in comp:
                     return [f"No completion found, err {comp}"]
                 for c in comp["embedding"]:
                     tidy_comps.append([c])

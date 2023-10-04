@@ -131,18 +131,13 @@ class PgVectorHandler(PostgresHandler, VectorStoreHandler):
             where_clause, offset_clause, limit_clause
         )
 
-        if filter_conditions:
-
-            if embedding_search:
-                # if search vector, return similar rows, apply other filters after if any
-                search_vector = filter_conditions["embeddings"]["value"][0]
-                filter_conditions.pop("embeddings")
-                return f"SELECT * FROM {table_name} ORDER BY embeddings <=> '{search_vector}' {after_from_clause}"
-            else:
-                # if filter conditions, return filtered rows
-                return f"SELECT * FROM {table_name} {after_from_clause}"
+        if filter_conditions and embedding_search:
+            # if search vector, return similar rows, apply other filters after if any
+            search_vector = filter_conditions["embeddings"]["value"][0]
+            filter_conditions.pop("embeddings")
+            return f"SELECT * FROM {table_name} ORDER BY embeddings <=> '{search_vector}' {after_from_clause}"
         else:
-            # if no filter conditions, return all rows
+            # if filter conditions, return filtered rows
             return f"SELECT * FROM {table_name} {after_from_clause}"
 
     def select(

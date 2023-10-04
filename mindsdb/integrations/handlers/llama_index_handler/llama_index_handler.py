@@ -105,9 +105,12 @@ class LlamaIndexHandler(BaseMLEngine):
             messages = []
             for row in df[:-1].to_dict('records'):
 
-                messages.append(f'user: {row[user_column]}')
-                messages.append(f'assistant: {row[assistant_column]}')
-
+                messages.extend(
+                    (
+                        f'user: {row[user_column]}',
+                        f'assistant: {row[assistant_column]}',
+                    )
+                )
             conversation = '\n'.join(messages)
 
             questions = [
@@ -120,14 +123,14 @@ class LlamaIndexHandler(BaseMLEngine):
                 user_prompt = args['using'].get('prompt', '')
 
             prompt_template = f'{user_prompt}\n'\
-                f'---------------------\n' \
-                f'We have provided context information below. \n' \
-                f'{{context_str}}\n' \
-                f'---------------------\n' \
-                f'This is previous conversation history:\n' \
-                f'{conversation}\n' \
-                f'---------------------\n' \
-                f'Given this information, please answer the question: {{query_str}}'
+                    f'---------------------\n' \
+                    f'We have provided context information below. \n' \
+                    f'{{context_str}}\n' \
+                    f'---------------------\n' \
+                    f'This is previous conversation history:\n' \
+                    f'{conversation}\n' \
+                    f'---------------------\n' \
+                    f'Given this information, please answer the question: {{query_str}}'
 
             engine_kwargs['text_qa_template'] = QuestionAnswerPrompt(prompt_template)
 
@@ -140,7 +143,9 @@ class LlamaIndexHandler(BaseMLEngine):
                 engine_kwargs['text_qa_template'] = QuestionAnswerPrompt(prompt_template)
 
             if input_column is None:
-                raise Exception(f'`input_column` must be provided at model creation time or through USING clause when predicting. Please try again.')  # noqa
+                raise Exception(
+                    '`input_column` must be provided at model creation time or through USING clause when predicting. Please try again.'
+                )
 
             if input_column not in df.columns:
                 raise Exception(f'Column "{input_column}" not found in input data! Please try again.')
@@ -159,8 +164,7 @@ class LlamaIndexHandler(BaseMLEngine):
             query_results = query_engine.query(question)  # TODO: provide extra_info in explain_target col
             results.append(query_results.response)
 
-        result_df = pd.DataFrame({'question': questions, args['target']: results})  # result_df['answer'].tolist()
-        return result_df
+        return pd.DataFrame({'question': questions, args['target']: results})
 
     def _get_service_context(self):
         args = self.model_storage.json_get('args')
@@ -178,18 +182,16 @@ class LlamaIndexHandler(BaseMLEngine):
 
         llm = OpenAI(**llm_kwargs)  # TODO: all usual params should go here
         embed_model = OpenAIEmbedding(openai_api_key=openai_api_key)
-        service_context = ServiceContext.from_defaults(
-            llm_predictor=LLMPredictor(llm=llm),
-            embed_model=embed_model
+        return ServiceContext.from_defaults(
+            llm_predictor=LLMPredictor(llm=llm), embed_model=embed_model
         )
-        return service_context
     
     def _setup_index(self, documents):
         args = self.model_storage.json_get('args')
         indexer: VectorStore = getattr(llama_index, args['using']['index_class'])
-        index = indexer.from_documents(documents, service_context=self._get_service_context())
-
-        return index
+        return indexer.from_documents(
+            documents, service_context=self._get_service_context()
+        )
 
     def _get_llama_index_api_key(self, args, strict=True):
         """
