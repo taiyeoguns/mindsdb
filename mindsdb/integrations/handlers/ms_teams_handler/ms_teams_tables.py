@@ -52,13 +52,13 @@ class MessagesTable(APITable):
         -------
         None
         """
-        teams = self.handler.connect() 
+        teams = self.handler.connect()
         for message in message_data:
             try:
                 teams.title(message['title'])
                 teams.text(message['text'])
                 teams.send()
-                logger.info(f"Message sent to Microsoft Teams channel successfully.")
+                logger.info("Message sent to Microsoft Teams channel successfully.")
             except Exception as e:
                 logger.error(f"Error sending message to Microsoft Teams channel: {e}")
                 raise e

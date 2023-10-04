@@ -132,9 +132,9 @@ class MongoDBHandler(DatabaseHandler):
             log.logger.error(f'Error connecting to MongoDB {self.database}, {e}!')
             result.error_message = str(e)
 
-        if result.success is True and need_to_close:
+        if result.success and need_to_close:
             self.disconnect()
-        if result.success is False and self.is_connected is True:
+        if not result.success and self.is_connected is True:
             self.is_connected = False
 
         return result
@@ -177,10 +177,8 @@ class MongoDBHandler(DatabaseHandler):
 
             result = []
             if not isinstance(cursor, pymongo.results.UpdateResult):
-                for row in cursor:
-                    result.append(self.flatten(row, level=self.flatten_level))
-
-            if len(result) > 0:
+                result.extend(self.flatten(row, level=self.flatten_level) for row in cursor)
+            if result:
                 df = pd.DataFrame(result)
             else:
                 columns = list(self.get_columns(collection).data_frame.Field)
@@ -243,12 +241,7 @@ class MongoDBHandler(DatabaseHandler):
         ]
         df = pd.DataFrame(collections_ar, columns=['table_name'])
 
-        response = Response(
-            RESPONSE_TYPE.TABLE,
-            df
-        )
-
-        return response
+        return Response(RESPONSE_TYPE.TABLE, df)
 
     def get_columns(self, collection) -> Response:
         """
@@ -261,16 +254,10 @@ class MongoDBHandler(DatabaseHandler):
         if record is not None:
             record = self.flatten(record)
 
-            for k, v in record.items():
-                data.append([k, type(v).__name__])
-
+            data.extend([k, type(v).__name__] for k, v in record.items())
         df = pd.DataFrame(data, columns=['Field', 'Type'])
 
-        response = Response(
-            RESPONSE_TYPE.TABLE,
-            df
-        )
-        return response
+        return Response(RESPONSE_TYPE.TABLE, df)
 
 connection_args = OrderedDict(
     user={

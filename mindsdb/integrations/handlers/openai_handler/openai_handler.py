@@ -97,8 +97,7 @@ class OpenAIHandler(BaseMLEngine):
             }
         )
 
-        unknown_args = set(args.keys()) - known_args
-        if unknown_args:
+        if unknown_args := set(args.keys()) - known_args:
             # return a list of unknown args as a string
             raise Exception(
                 f"Unknown arguments: {', '.join(unknown_args)}.\n Known arguments are: {', '.join(known_args)}"
@@ -154,14 +153,11 @@ class OpenAIHandler(BaseMLEngine):
                 'model': pred_args.get('model_name', 'text-embedding-ada-002')
             }
             model_name = 'embedding'
-            if args.get('question_column'):
-                prompts = list(df[args['question_column']].apply(lambda x: str(x)))
-                empty_prompt_ids = np.where(df[[args['question_column']]].isna().all(axis=1).values)[0]
-            else:
+            if not args.get('question_column'):
                 raise Exception('Embedding mode needs a question_column')
 
-        # Image mode
-
+            prompts = list(df[args['question_column']].apply(lambda x: str(x)))
+            empty_prompt_ids = np.where(df[[args['question_column']]].isna().all(axis=1).values)[0]
         elif args.get('mode', self.default_mode) == 'image':
             api_args = {
                 'n': pred_args.get('n', None),
@@ -179,7 +175,6 @@ class OpenAIHandler(BaseMLEngine):
             else:
                 raise Exception('Image mode needs either `prompt_template` or `question_column`.')
 
-        # Chat or normal completion mode
         else:
             if args.get('question_column', False) and args['question_column'] not in df.columns:
                 raise Exception(f"This model expects a question to answer in the '{args['question_column']}' column.")
@@ -219,14 +214,13 @@ class OpenAIHandler(BaseMLEngine):
                 empty_prompt_ids = np.where(df[[args['input_text']]].isna().all(axis=1).values)[0]
                 prompts = []
                 for i in df.index:
+                    json_struct = ''
                     if 'json_struct' in df.columns:
                         if isinstance(df['json_struct'][i], str):
                             df['json_struct'][i] = json.loads(df['json_struct'][i])
-                        json_struct = ''
                         for ind, val in enumerate(df['json_struct'][i].values()):
                             json_struct = json_struct + f'{ind}. {val}\n'
                     else:
-                        json_struct = ''
                         for ind, val in enumerate(args['json_struct'].values()):
                             json_struct = json_struct + f'{ind + 1}. {val}\n'
 
@@ -280,12 +274,7 @@ class OpenAIHandler(BaseMLEngine):
                     responses = pred_df[args['target']][i].split('\n')
                     responses = [x[3:] for x in responses]      # del question index
 
-                    pred_df[args['target']][i] = {
-                        key: val for key, val in zip(
-                            json_keys,
-                            responses
-                        )
-                    }
+                    pred_df[args['target']][i] = dict(zip(json_keys, responses))
                 except Exception:
                     pred_df[args['target']][i] = None
 
@@ -560,7 +549,7 @@ class OpenAIHandler(BaseMLEngine):
                       'base': f'{temp_file_name}_prepared.jsonl',
                       'train': f'{temp_file_name}_prepared_train.jsonl',
                       'val': f'{temp_file_name}_prepared_valid.jsonl'}
-        jsons = {k: None for k in file_names.keys()}
+        jsons = {k: None for k in file_names}
         for split, file_name in file_names.items():
             if os.path.isfile(os.path.join(temp_storage_path, file_name)):
                 jsons[split] = openai.File.create(
